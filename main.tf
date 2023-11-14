@@ -19,10 +19,10 @@ resource "aws_vpc" "vpc" {
   enable_dns_hostnames = true
 
   tags = merge({
-    ManagedBy = "terraform"
-    Name      = "${var.vpc_name}-vpc"
-    Env       = var.env
-  "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
+    ManagedBy                                       = "terraform"
+    Name                                            = "${var.vpc_name}-vpc"
+    Env                                             = var.env
+    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
   "kubernetes.io/cluster/${var.eks_cluster_name}" = "owned" }, var.vpc_tags)
 
 }
@@ -40,12 +40,11 @@ resource "aws_subnet" "public" {
     ManagedBy                                       = "terraform"
     subnets                                         = "public"
     Name                                            = "${var.vpc_name}-${element(var.availability_zones, count.index)}-public${count.index + 1}"
-    Infra                                           = "Stormx-V2"
     Env                                             = var.env
     "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
     "kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
-    "karpenter.sh/discovery" = var.eks_cluster_name
-    "kubernetes.io/role/elb" = 1 }, var.public_subnet_tags)
+    "karpenter.sh/discovery"                        = var.eks_cluster_name
+  "kubernetes.io/role/elb" = 1 }, var.public_subnet_tags)
 
   depends_on = [aws_vpc.vpc]
 }
@@ -132,7 +131,7 @@ resource "aws_subnet" "private" {
     Env                                             = var.env
     "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
     "kubernetes.io/cluster/${var.eks_cluster_name}" = "owned"
-    "karpenter.sh/discovery" = var.eks_cluster_name
+    "karpenter.sh/discovery"                        = var.eks_cluster_name
     "kubernetes.io/role/internal-elb"               = 1
   }, var.private_subnet_tags)
 
@@ -145,7 +144,7 @@ resource "aws_eip" "nat_eip" {
   count      = var.env != "prod" && contains(local.env, var.env) ? 1 : 0
   vpc        = true
   depends_on = [aws_internet_gateway.ig]
-  tags       = {
+  tags = {
     MangedBy = "terraform"
     Name     = "${var.vpc_name}-nat_eip"
     Env      = var.env
@@ -158,7 +157,7 @@ resource "aws_eip" "nat_eip_prod" {
   count      = var.env == "prod" && contains(local.env, var.env) ? length(var.availability_zones) : 0
   vpc        = true
   depends_on = [aws_internet_gateway.ig]
-  tags       = {
+  tags = {
     MangedBy = "terraform"
     Name     = "${var.vpc_name}-nat_eip"
     Env      = var.env
@@ -252,7 +251,7 @@ resource "aws_route_table" "prod_private" {
 #------------------route for private route table to nat gateway- (default route)------------------------
 
 locals {
-  private_route_cidr = ["0.0.0.0/0","0.0.0.0/0","0.0.0.0/0"]
+  private_route_cidr = ["0.0.0.0/0", "0.0.0.0/0", "0.0.0.0/0"]
 }
 
 resource "aws_route" "default_route_nat_gateway" {
@@ -300,11 +299,11 @@ resource "aws_flow_log" "vpc_flowlog" {
     per_hour_partition = true
   }
   tags = {
-    MangedBy = "terraform"
-    VPC_Name = "${var.vpc_name}-vpc"
-    Name     = "${var.vpc_name}-vpc-flowlog"
-    Env      = var.env
-    log_destination  = "s3"
+    MangedBy        = "terraform"
+    VPC_Name        = "${var.vpc_name}-vpc"
+    Name            = "${var.vpc_name}-vpc-flowlog"
+    Env             = var.env
+    log_destination = "s3"
   }
   depends_on = [aws_s3_bucket.vpc_flowlog_bucket]
 }
@@ -312,13 +311,13 @@ resource "aws_flow_log" "vpc_flowlog" {
 #---------conditional block -S3 bucket for vpc flow log ----------
 
 resource "aws_s3_bucket" "vpc_flowlog_bucket" {
-  count  = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "s3" ? 1 : 0
-  bucket = "${var.vpc_name}-vpc-flowlog-bucket-${data.aws_caller_identity.current.account_id}"
+  count         = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "s3" ? 1 : 0
+  bucket        = "${var.vpc_name}-vpc-flowlog-bucket-${data.aws_caller_identity.current.account_id}"
   force_destroy = true
   tags = {
-    Name = "${var.vpc_name}-vpc-flowlog-bucket-${data.aws_caller_identity.current.account_id}"
+    Name     = "${var.vpc_name}-vpc-flowlog-bucket-${data.aws_caller_identity.current.account_id}"
     MangedBy = "terraform"
-    Env  = var.env
+    Env      = var.env
   }
   depends_on = [aws_subnet.private]
 }
@@ -326,7 +325,7 @@ resource "aws_s3_bucket" "vpc_flowlog_bucket" {
 #-------conditional block acl--make s3 bucket private --------------
 
 resource "aws_s3_bucket_acl" "vpc_flowlog_bucket_acl" {
-  count  = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "s3" ? 1 : 0
+  count      = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "s3" ? 1 : 0
   bucket     = element(aws_s3_bucket.vpc_flowlog_bucket.*.id, count.index)
   acl        = "private"
   depends_on = [aws_s3_bucket.vpc_flowlog_bucket]
@@ -367,20 +366,20 @@ resource "aws_flow_log" "vpc_flowlog_Cloudwatch" {
   traffic_type    = "ALL"
   vpc_id          = element(aws_vpc.vpc.*.id, count.index)
   tags = {
-    MangedBy = "terraform"
-    VPC_Name = "${var.vpc_name}-vpc"
-    Name     = "${var.vpc_name}-vpc-flowlog"
-    Env      = var.env
-    log_destination  = "aws_cloudwatch_log_group"
+    MangedBy        = "terraform"
+    VPC_Name        = "${var.vpc_name}-vpc"
+    Name            = "${var.vpc_name}-vpc-flowlog"
+    Env             = var.env
+    log_destination = "aws_cloudwatch_log_group"
   }
-  depends_on      = [aws_cloudwatch_log_group.vpc_flowlog_loggroup]
+  depends_on = [aws_cloudwatch_log_group.vpc_flowlog_loggroup]
 }
 
 #-------conditional block cloud watch log group-------------------------------------
 
 resource "aws_cloudwatch_log_group" "vpc_flowlog_loggroup" {
-  count           = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "cloudwatch_log_group" ? 1 : 0
-  name            = "${var.vpc_name}-flow-log-group"
+  count = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "cloudwatch_log_group" ? 1 : 0
+  name  = "${var.vpc_name}-flow-log-group"
   tags = {
     MangedBy = "terraform"
     VPC_Name = "${var.vpc_name}-vpc"
@@ -394,37 +393,37 @@ resource "aws_cloudwatch_log_group" "vpc_flowlog_loggroup" {
 #--------conditional block iam role for cloud watch log group ------------------------
 
 resource "aws_iam_role" "vpcflow_log_group_role" {
-  count           = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "cloudwatch_log_group" ? 1 : 0
+  count = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "cloudwatch_log_group" ? 1 : 0
   name  = "vpcflow_log_group_role"
 
   assume_role_policy = jsonencode({
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "vpc-flow-logs.amazonaws.com"
+    "Version" : "2012-10-17",
+    "Statement" : [
+      {
+        "Sid" : "",
+        "Effect" : "Allow",
+        "Principal" : {
+          "Service" : "vpc-flow-logs.amazonaws.com"
+        },
+        "Action" : "sts:AssumeRole"
       },
-      "Action": "sts:AssumeRole"
-    },
-  ]
-  tags = {
-    MangedBy = "terraform"
-    VPC_Name = "${var.vpc_name}-vpc"
-    Name     = "vpcflow_log_group_role"
-    Env      = var.env
-    used_by  = "vpcflow_log_group_role"
-  }
-})
+    ]
+    tags = {
+      MangedBy = "terraform"
+      VPC_Name = "${var.vpc_name}-vpc"
+      Name     = "vpcflow_log_group_role"
+      Env      = var.env
+      used_by  = "vpcflow_log_group_role"
+    }
+  })
 
-  depends_on         = [aws_subnet.private]
+  depends_on = [aws_subnet.private]
 }
 
 #-------conditional block iam role policy for vpc flow log  cloud watch log group-------- 
 
 resource "aws_iam_role_policy" "vpc_flowloggroup_role_policy" {
-  count           = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "cloudwatch_log_group" ? 1 : 0
+  count = var.vpc_flowlog == true && contains(local.env, var.env) && var.vpc_flowlog_destination_type == "cloudwatch_log_group" ? 1 : 0
   name  = "vpcflow_log_group_iam_role_policy"
   role  = element(aws_iam_role.vpcflow_log_group_role.*.id, count.index)
 
@@ -446,46 +445,46 @@ resource "aws_iam_role_policy" "vpc_flowloggroup_role_policy" {
   ]
 }
 EOF
-depends_on         = [aws_iam_role.vpcflow_log_group_role]
+  depends_on = [aws_iam_role.vpcflow_log_group_role]
 }
 
 #----------default vpc network acl block--------------------
 
 resource "aws_network_acl" "default_network_acl" {
-  count = contains(local.env, var.env) ? 1 : 0
+  count  = contains(local.env, var.env) ? 1 : 0
   vpc_id = element(aws_vpc.vpc.*.id, count.index)
   subnet_ids = [
-  coalesce(element(aws_subnet.private.*.id, 0), ""),
-  coalesce(element(aws_subnet.private.*.id, 1), ""),
-  coalesce(element(aws_subnet.private.*.id, 2), ""),
-  coalesce(element(aws_subnet.public.*.id, 0), ""),
-  coalesce(element(aws_subnet.public.*.id, 1), ""),
-  coalesce(element(aws_subnet.public.*.id, 2), "")
+    coalesce(element(aws_subnet.private.*.id, 0), ""),
+    coalesce(element(aws_subnet.private.*.id, 1), ""),
+    coalesce(element(aws_subnet.private.*.id, 2), ""),
+    coalesce(element(aws_subnet.public.*.id, 0), ""),
+    coalesce(element(aws_subnet.public.*.id, 1), ""),
+    coalesce(element(aws_subnet.public.*.id, 2), "")
   ]
-    ingress{
-      from_port   = 1024   
-      to_port     = 65535    
-      protocol    = "tcp"
-      cidr_block  = "0.0.0.0/0"
-      action      = "allow"
-      rule_no      = 500
-    }
-  
-  egress{
-      from_port   = 0    # allow  from all ports
-      to_port     = 0   # allow  to all ports
-      protocol    = "-1" # allow all protocols
-      cidr_block  = "0.0.0.0/0"
-      action      = "allow"
-      rule_no      = 100
+  ingress {
+    from_port  = 1024
+    to_port    = 65535
+    protocol   = "tcp"
+    cidr_block = "0.0.0.0/0"
+    action     = "allow"
+    rule_no    = 500
+  }
 
-     }
-  
+  egress {
+    from_port  = 0    # allow  from all ports
+    to_port    = 0    # allow  to all ports
+    protocol   = "-1" # allow all protocols
+    cidr_block = "0.0.0.0/0"
+    action     = "allow"
+    rule_no    = 100
+
+  }
+
   tags = {
-    Name = "${var.vpc_name}-default_network_acl"
+    Name     = "${var.vpc_name}-default_network_acl"
     MangedBy = "terraform"
     VPC_Name = "${var.vpc_name}-vpc"
     Env      = var.env
   }
-  
+
 }
